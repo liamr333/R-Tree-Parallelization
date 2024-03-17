@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
-// Trees cannot exceed 512MB in total size
+// Trees cannot exceed 4GB in total size
 #define MAX_TREE_SIZE 4294967296
 
 
