@@ -5,4 +5,4 @@ Running ./main m n will test and write all times for insertion into the "output_
 
 The algorithm presented (choose_leaf_parallel) is a parallelized verion of Antonin Guttman's ChooseLeaf algorithm that he published in his 1984 paper "R-trees: A dynamic index structure for spatial searching".
 
-The provided output_times.csv and analysis Jupyter Workbook are based on data I derived by running main 4096 2; main 256 3; main 8192 2;. If you want to generate your own data, delete the output_times.csv file before running main so that it will write to a new output_times.csv file.
+The provided output_times.csv is based on data I derived by running main 4096 2; main 256 3; main 8192 2;. If you want to generate your own data, delete the output_times.csv file before running main so that it will write to a new output_times.csv file.
