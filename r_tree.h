@@ -73,6 +73,13 @@ double get_merged_area(MBR *mbr1, MBR *mbr2);
 // Test and see what the area increase to an MBR would be if you add another child to it
 double get_area_increase(MBR *original, MBR *new_child);
 
+// Expands the area of mbr to include child_mbr
+// Does nothing if child_mbr is fully contained withing mbr
+void expand_mbr(MBR *mbr, MBR *child_mbr);
+
+// Returns the overlapping area of two minimum bounding rectangles
+double get_overlapping_area(MBR *mbr1, MBR *mbr2);
+
 
 index_record *initialize_ir(MBR *mbr);
 
@@ -82,6 +89,15 @@ r_tree_node *initialize_rt(int max_members);
 
 // Returns true if successfully added a new index record to the r_tree_node, false if you have reached max capacity and need to split
 bool add_member(r_tree_node *host_node, index_record *new_member);
+
+
+// Removes the index record in r at index index. Returns NULL if index invalid or r empty
+index_record *remove_index_record(r_tree_node *r, int index);
+
+// Moves the index record in r1 at index index to r2. Returns false if index invalid,
+// r1 empty, or r2 full
+bool move_index_record(r_tree_node *r1, r_tree_node *r2, int index);
+
 
 // Returns true if the r_tree_node is a bottom-level node
 // You can see that this is true when the node's index_record's point to NULL
