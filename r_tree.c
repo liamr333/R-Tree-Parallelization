@@ -96,6 +96,32 @@ double get_area_increase(MBR *original, MBR *new_child) {
         return new_area - original_area;
 }
 
+// Expands the area of mbr to include child_mbr
+// Does nothing if child_mbr is fully contained withing mbr
+void expand_mbr(MBR *mbr, MBR *child_mbr) {
+	if (child_mbr->min_x < mbr->min_x)
+		mbr->min_x = child_mbr->min_x;
+	if (child_mbr->min_y < mbr->min_y)
+		mbr->min_y = child_mbr->min_y;
+	if (child_mbr->max_x > mbr->max_x)
+		mbr->max_x = child_mbr->max_x;
+	if (child_mbr->max_y > mbr->max_y)
+		mbr->max_y = child_mbr->max_y;
+}
+
+// Returns the overlapping area of two minimum bounding rectangles
+double get_overlapping_area(MBR *mbr1, MBR *mbr2) {
+        double x_distance = fmin(mbr1->max_x, mbr2->max_x) - fmax(mbr1->min_x, mbr2->min_x);
+        double y_distance = fmin(mbr1->max_y, mbr2->max_y) - fmax(mbr1->min_y, mbr2->min_y);
+
+        if (x_distance <= 0 || y_distance <= 0)
+            return 0.0;
+
+	double overlapping_area = x_distance * y_distance;
+
+	return overlapping_area;
+}
+
 
 index_record *initialize_ir(MBR *mbr) {
 	index_record *ir = (index_record *)malloc(sizeof(index_record));
@@ -159,11 +185,44 @@ bool add_member(r_tree_node *host_node, index_record *new_member) {
 	return true;
 }
 
+// Removes the index record in r at index index. Returns NULL if index invalid or r empty
+index_record *remove_index_record(r_tree_node *r, int index) {
+	if (r->num_members == 0 || index >= r->num_members)
+		return NULL;
+
+	int i;
+
+	index_record *ir = r->index_records[index];
+
+	// Move all index records after ir back by one to fill in the gap
+
+	for (i = index + 1; i < r->num_members; i++)
+		r->index_records[i- 1] = r->index_records[i];
+
+
+	r->num_members--;
+
+	return ir;
+}
+
+// Moves the index record in r1 at index index to r2. Returns false if index invalid,
+// r1 empty, or r2 full
+bool move_index_record(r_tree_node *r1, r_tree_node *r2, int index) {
+	index_record *ir = remove_index_record(r1, index);
+
+	if (ir == NULL)
+		return false;
+
+	return add_member(r2, ir);
+}
+
+
 // Returns true if the r_tree_node is a bottom-level node
 // You can see that this is true when the node's index_record's point to NULL
 bool is_leaf(r_tree_node *node) {
 	return node->index_records[0]->child == NULL;
 }
+
 
 
 // Generates a random r-tree where each r_tree_node has r_tree_node->max_members / 2 entries
@@ -173,11 +232,11 @@ void generate_random_tree(r_tree_node *node, int max_levels, int current_level) 
 
 	// If you are at a leaf node
 	if (current_level >= max_levels) {
-	
+
 		for (i = 0; i < node->max_members * TREE_DENSITY; i++) {
 
 			MBR *rand_mbr;
-			
+
 			if (node->parent != NULL)
 				rand_mbr = random_mbr(node->parent->mbr->min_x, node->parent->mbr->min_y, node->parent->mbr->max_x, node->parent->mbr->max_y);
 			else
@@ -187,11 +246,11 @@ void generate_random_tree(r_tree_node *node, int max_levels, int current_level) 
 
 			// In a real-world scenario these would contain pointers to database tuples, but in our simulation there is no need for that
 			new_ir->child = NULL;
-			
+
 			add_member(node, new_ir);
 
 		}
-		
+
 		return;
 	}
 
@@ -205,13 +264,13 @@ void generate_random_tree(r_tree_node *node, int max_levels, int current_level) 
 			rand_mbr = random_mbr(0, 0, MAX_RAND_NUM, MAX_RAND_NUM);
 		else
 			rand_mbr = random_mbr(node->parent->mbr->min_x, node->parent->mbr->min_y, node->parent->mbr->max_x, node->parent->mbr->max_y);
-		
+
 		index_record *new_ir = initialize_ir(rand_mbr);
-		
+
 		r_tree_node *child_node = initialize_rt(node->max_members);
 		new_ir->child = child_node;
 		child_node->parent = new_ir;
-		
+
 		add_member(node, new_ir);
 
 		generate_random_tree(child_node, max_levels, current_level + 1);
