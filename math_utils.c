@@ -1,6 +1,6 @@
 #include "math_utils.h"
 
-// Generate a random double value that is less than min and greater than max
+// Generate a random double value that is greater than min and less than max
 // Used to make randomly generated R-trees valid
 double random_within_range(double min, double max) {
     	double range = max - min;
