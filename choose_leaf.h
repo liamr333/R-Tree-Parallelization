@@ -12,13 +12,13 @@ double min_enlargements[NUM_CORES];
 int min_enlargement_indices[NUM_CORES];
 
 
-// Used to store the parameters to be passed to the function for each thread which finds the minimum enlargement of an MBR when inserting a 
+// Used to store the parameters to be passed to the function for each thread which finds the minimum enlargement of an MBR when inserting a
 // new record
 typedef struct param0 {
 	struct r_tree_node *rt;
 	struct index_record *insertion_ir;
 
-	// Denote the bounds of the subset of index_records for which each thread will search for a min_enlargement in 
+	// Denote the bounds of the subset of index_records for which each thread will search for a min_enlargement in
 	int start_index;
 	int end_index;
 
