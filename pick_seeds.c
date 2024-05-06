@@ -31,6 +31,7 @@ int *pick_seeds_sequential(index_record **irs, int num_index_records, double *bi
 
 
 void *pick_seeds_subset(void *arg) {
+
 	param1 *p = (param1*)arg;
 
 	r_tree_node *rt = p->rt;
@@ -60,7 +61,6 @@ void *pick_seeds_subset(void *arg) {
 		}
 	}
 
-
 	seed_indices_list[thread_index] = seed_indices;
 	greatest_wastes[thread_index] = curr_biggest_waste;
 
@@ -70,7 +70,6 @@ void *pick_seeds_subset(void *arg) {
 
 
 int *pick_seeds_parallel(r_tree_node *rt, index_record *insertion_ir, int num_threads) {
-
 
 	if (num_threads > NUM_CORES)
 		num_threads = NUM_CORES;
@@ -84,7 +83,6 @@ int *pick_seeds_parallel(r_tree_node *rt, index_record *insertion_ir, int num_th
 
 	param1 **params = (param1**)malloc(sizeof(param1*) * num_threads);
 
-
 	for (i = 0; i < num_threads; i++) {
 		params[i] = (param1*)malloc(sizeof(param1));
 		params[i]->rt = rt;
@@ -97,7 +95,6 @@ int *pick_seeds_parallel(r_tree_node *rt, index_record *insertion_ir, int num_th
 		pthread_create(&threads[i], NULL, pick_seeds_subset, (void*)params[i]);
 	}
 
-
 	for (i = 0; i < num_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
@@ -105,6 +102,7 @@ int *pick_seeds_parallel(r_tree_node *rt, index_record *insertion_ir, int num_th
 
 	double greatest_waste = greatest_wastes[0];
 	int *seed_indices = seed_indices_list[0];
+
 
 	for (i = 0; i < num_threads; i++) {
 		if (greatest_wastes[i] > greatest_waste) {
