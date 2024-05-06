@@ -3,7 +3,7 @@
 #include "pick_seeds.h"
 
 // Slow and not recommended for large trees
-#define SAVE_TO_CSV false
+#define SAVE_TO_CSV true
 #define PRINT_TREE false
 #define PRINT_TREE_SPECS true
 #define NUM_CORES 12
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 	// Initialize randomness
 	srand(time(NULL));
 
-	int i;
+	int i, j, k;
 	int index_records_per_node = atoi(argv[1]);
 	// TO DO: Account for this 1-off thing (works for now but messy fix)
 	int num_levels = atoi(argv[2]) - 1;
@@ -32,102 +32,64 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	r_tree_node *root = initialize_rt(index_records_per_node);
 
-	generate_random_tree(root, num_levels, 0);
 
-	if (PRINT_TREE)
-		print_tree(root, 0);
+	struct timespec start;
+	struct timespec end;
 
-	if (PRINT_TREE_SPECS)
-		print_tree_specs();
 
-	// Generate an index record with a small MBR right in the center for testing out insertion time
-	MBR *insertion_mbr = create_mbr(48.5, 48.9, 50.5, 50.5);
-	index_record *insertion_ir = initialize_ir(insertion_mbr);
-	r_tree_node *insertion_rt_node_1;
-	r_tree_node *insertion_rt_node_2;
-
-	FILE *f;
-
-	if (access("output_times.csv", F_OK) == 0) {
-		f = fopen("output_times.csv", "a");
-	} else {
-		f = fopen("output_times.csv", "w+");
-
-		char *col1 = "index_records_per_node";
-		char *col2 = "num_levels";
-		char *col3 = "num_threads";
-		char *col4 = "average_time_elapsed";
-
-		fprintf(f, "%s,%s,%s,%s\n", col1, col2, col3, col4);
-	}
-
-	// Going up to 12 threads because the fox servers have 12 cores
 	for (i = 1; i < NUM_CORES + 1; i++) {
 
-		int j;
+		int num_insertions = 100;
 		int num_threads = i;
 
-		if (num_threads > index_records_per_node) {
-			fprintf(stderr, "Stopping here. More threads than nodes\n");
-			exit(1);
-		}
+		fprintf(stderr, "Doing %d insertions for %d threads\n", num_insertions, num_threads);
+
+		double summed_time = 0;
+		int num_rounds = 25;
 
 
-		double sum_elapsed = 0;
+		for (j = 0; j < num_rounds; j++) {
 
-		// For each number of threads, get the average of 25 tests
-		for (j = 0; j < 25; j++) {
+			r_tree_node *root = initialize_rt(index_records_per_node);
+			generate_random_tree(root, num_levels, 0);
 
-			if (num_threads == 1) {
-				clock_gettime(CLOCK_MONOTONIC, &ts_begin);
-        			insertion_rt_node_1 = choose_leaf_sequential(root, insertion_ir);
-				double bw;
-				int *seed_indices = pick_seeds_sequential(root->index_records, root->num_members, &bw);
-        			clock_gettime(CLOCK_MONOTONIC, &ts_end);
+			MBR **insertion_mbrs = (MBR**)malloc(sizeof(MBR*) * num_insertions);
+			index_record **insertion_irs = (index_record**)malloc(sizeof(index_record*) * num_insertions);
 
-        			elapsed = ts_end.tv_sec - ts_begin.tv_sec;
-        			elapsed += (ts_end.tv_nsec - ts_begin.tv_nsec) / 1000000000.0;
-
-        			printf("Sequential algorithm found node for insertion: N%d\n", insertion_rt_node_1->index);
-        			printf("Sequential algorithm found two seeds for splitting: N%d, N%d\n", seed_indices[0], seed_indices[1]);
-				printf("Time taken: %lf seconds\n", elapsed);
-
-			} else {
-
-	        		clock_gettime(CLOCK_MONOTONIC, &ts_begin);
-       	 			insertion_rt_node_2 = choose_leaf_parallel(root, insertion_ir, num_threads);
-       		 		int *seed_indices = pick_seeds_parallel(root, insertion_ir, num_threads);
-				clock_gettime(CLOCK_MONOTONIC, &ts_end);
-
-        			elapsed = ts_end.tv_sec - ts_begin.tv_sec;
-        			elapsed += (ts_end.tv_nsec - ts_begin.tv_nsec) / 1000000000.0;
-        			printf("Parallel algorithm with %d threads found node for insertion: N%d\n", num_threads, insertion_rt_node_2->index);
-				printf("Parallel algorithm with %d threads found two seeds for splitting: N%d, N%d\n", num_threads, seed_indices[0], seed_indices[1]);
-        			printf("Time taken: %lf seconds\n", elapsed);
+			// Initialize random insertion_records for insertion into R Tree
+			for (k = 0; k < num_insertions; k++) {
+				insertion_mbrs[k] = random_small_mbr(0, 0, MAX_RAND_NUM, MAX_RAND_NUM);
+				insertion_irs[k] = initialize_ir(insertion_mbrs[k]);
 			}
 
-			sum_elapsed = sum_elapsed + elapsed;
+
+			clock_gettime(CLOCK_MONOTONIC, &start);
+
+			for (k = 0; k < num_insertions; k++) {
+
+				insert(&root, insertion_irs[k], num_threads);
+
+			}
+
+			clock_gettime(CLOCK_MONOTONIC, &end);
+
+			free_tree(root);
+			free(insertion_mbrs);
+			free(insertion_irs);
+
+			double duration = end.tv_sec - start.tv_sec;
+			duration += (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+			summed_time += duration;
 
 		}
 
-		double average_elapsed = sum_elapsed / 25;
-		fprintf(f, "%d,%d,%d,%lf\n", index_records_per_node, num_levels + 1, num_threads, average_elapsed);
+		double average_duration = summed_time / num_rounds;
+
+		fprintf(stderr, "Took an average of %lf seconds %d insertions in a tree with M=%d, levels=%d, and %d threads\n", average_duration, num_insertions, index_records_per_node, num_levels, num_threads);
 
 	}
-
-	fclose(f);
-
-
-	if (SAVE_TO_CSV) {
-		printf("Writing tree to csv (this may take a while)\n");
-		write_tree_to_csv("output.csv", root);
-	}
-
-	free_tree(root);
-	free(insertion_mbr);
-	free(insertion_ir);
 
 	return 0;
 }
