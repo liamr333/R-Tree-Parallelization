@@ -42,6 +42,8 @@ typedef struct MBR {
 typedef struct index_record {
 	struct MBR *mbr;
 	struct r_tree_node *child;
+	struct r_tree_node *host;
+	int index;
 } index_record;
 
 
@@ -68,6 +70,12 @@ MBR *create_mbr(int min_x, int min_y, int max_x, int max_y);
 MBR *random_mbr(double min_min_x, double min_min_y, double max_max_x, double max_max_y);
 
 
+// Returns a randomly generated MBR of at most width 1 and at most height 1 within the given bounds
+// both the position, height, and width of the MBR are random, but it is guaranteed to be fully confined
+// within min_min_x, min_min_y, max_max_x, and max_max_y
+MBR *random_small_mbr(double min_min_x, double min_min_y, double max_max_x, double max_max_y);
+
+
 double get_merged_area(MBR *mbr1, MBR *mbr2);
 
 // Test and see what the area increase to an MBR would be if you add another child to it
@@ -82,6 +90,9 @@ double get_overlapping_area(MBR *mbr1, MBR *mbr2);
 
 
 index_record *initialize_ir(MBR *mbr);
+
+// Given an MBR as a parameter, create an identical copy of that MBR at a different location in memory
+MBR *copy_mbr(MBR *original_mbr);
 
 
 r_tree_node *initialize_rt(int max_members);
@@ -100,8 +111,30 @@ bool move_index_record(r_tree_node *r1, r_tree_node *r2, int index);
 
 
 // Returns true if the r_tree_node is a bottom-level node
-// You can see that this is true when the node's index_record's point to NULL
 bool is_leaf(r_tree_node *node);
+
+
+// Returns true if the r_tree_node is a top-level node
+bool is_parent(r_tree_node *node);
+
+
+// Returns true if there is the max number of index_record's in your r_tree_node
+bool is_full(r_tree_node *node);
+
+// (Used for when you have already found the leaf-level r_tree_node rt to insert your index_record ir into
+// Insertion function that can be parallized or not based on arguments
+// Finds the optimal insertion to minimize MBR overlap
+// The node splitting algorithm was made up by me
+// You need to pass root because it might change if a new root is created
+void insert_at_node(r_tree_node *rt, index_record *ir, r_tree_node **root, int num_threads);
+
+// General insertion function
+// You need to pass a pointer to a pointer of the root in case the root changes to a new root during the insertion process
+void insert(r_tree_node **root, index_record *ir, int num_threads);
+
+// Given an r_tree_node, ensures that its parent index_record has an MBR that is the minimum bounding rectangle of all children MBR's
+// Used so that generate_randoom_tree does not create MBRs that are not actually MBRs
+void validate_node(r_tree_node *rt);
 
 
 // Generates a random r-tree where each r_tree_node has r_tree_node->max_members / 2 entries

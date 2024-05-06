@@ -42,7 +42,7 @@ void *parallel_get_insertion_index(void *arg) {
 		}
 	}
 
-	
+
 	min_enlargements[result_index] = min_enlargement;
 	min_enlargement_indices[result_index] = curr_index;
 	pthread_exit((void *)arg);
@@ -52,7 +52,7 @@ void *parallel_get_insertion_index(void *arg) {
 // Used to initialize shared memory objects for the threads when they need to get the insertion index for a new record
 param0 **initialize_threads(r_tree_node *rt, index_record *insertion_ir, int num_threads) {
 	int index_records_per_thread = (int) ceil((float)rt->num_members / num_threads);
-	
+
 	param0 **param_objects = (param0**)malloc(sizeof(param0*) * num_threads);
 
 	if (param_objects == NULL) {
@@ -100,6 +100,7 @@ r_tree_node *choose_leaf_sequential(r_tree_node *node, index_record *new_record)
 
 
 r_tree_node *choose_leaf_parallel(r_tree_node *node, index_record *new_record, int num_threads) {
+
 	int i;
 	double min_enlargement;
 	pthread_t thread_ids[num_threads];
@@ -115,7 +116,7 @@ r_tree_node *choose_leaf_parallel(r_tree_node *node, index_record *new_record, i
 
 		// Get the minimum of the local minimum enlargement indices that the threads have written
 		min_enlargement = min_enlargements[0];
-		
+
 		int curr_index = min_enlargement_indices[0];
 
 		for (i = 0; i < num_threads; i++) {
@@ -124,7 +125,7 @@ r_tree_node *choose_leaf_parallel(r_tree_node *node, index_record *new_record, i
 				curr_index = min_enlargement_indices[i];
 			}
 		}
-		
+
 		int optimal_ir_index = curr_index;
 
 		return choose_leaf_parallel(node->index_records[optimal_ir_index]->child, new_record, num_threads);
