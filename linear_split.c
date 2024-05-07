@@ -38,14 +38,15 @@ void *linear_split_subset(void *arg) {
 	index_record *ir_1 = params->ir_1;
 	index_record *ir_2 = params->ir_2;
 	int start_index = params->start_index;
-	int end_index = params->start_index;
+	int end_index = params->end_index;
 
 	int i;
+
 
 	for (i = start_index; i < end_index; i++) {
 		// We put this here because in the thread initialization process, the last thread may be
 		// set up to search for index_records that are out of bounds
-		if (i == rt->num_members)
+		if (i >= rt->num_members)
 			break;
 
 
@@ -94,6 +95,18 @@ void linear_split_parallel(r_tree_node *rt, index_record *ir_1, index_record *ir
 		param_objects[i]->ir_2 = ir_2;
 	}
 
+	pthread_t threads[num_threads];
+
+
+	for (i = 0; i < num_threads; i++) {
+		pthread_create(&threads[i], NULL, linear_split_subset, (void*)param_objects[i]);
+	}
+
+
+	for (i = 0; i < num_threads; i++) {
+		pthread_join(threads[i], NULL);
+	}
+
 
 	for (i = 0; i < rt->num_members; i++) {
 		if (split_nodes[i] == 0)
@@ -103,7 +116,12 @@ void linear_split_parallel(r_tree_node *rt, index_record *ir_1, index_record *ir
 	}
 
 
+	for (i = 0; i < num_threads; i++) {
+		free(param_objects[i]);
+	}
+
+	free(param_objects);
+
 	// Free up shared list
 	free(split_nodes);
 }
-
